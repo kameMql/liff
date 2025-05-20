@@ -6,17 +6,19 @@
   <title>予定入力</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    body {
+    html, body {
       font-family: 'Helvetica Neue', sans-serif;
       margin: 0;
-      padding: 20px;
+      padding: 0;
       background-color: #f8f8f8;
       color: #333;
+      box-sizing: border-box;
     }
 
     h2 {
       text-align: center;
       color: #4CAF50;
+      margin-top: 20px;
     }
 
     form {
@@ -52,6 +54,8 @@
 
     button, .calendar-link {
       width: 100%;
+      max-width: 400px;
+      margin: 10px auto 0;
       padding: 12px;
       background-color: #4CAF50;
       color: white;
@@ -59,7 +63,6 @@
       border-radius: 5px;
       font-size: 18px;
       cursor: pointer;
-      margin-top: 10px;
       display: block;
       text-align: center;
       text-decoration: none;
@@ -85,7 +88,7 @@
     <button type="submit">LINEに送信</button>
   </form>
 
-  <!-- 📅 カレンダーリンク追加 -->
+  <!-- 📅 カレンダーリンク -->
   <a href="calender.html" class="calendar-link">📅 カレンダーを見る</a>
 
   <script>
