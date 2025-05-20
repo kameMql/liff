@@ -48,7 +48,7 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js"></script>
 
   <script>
-    const liffId = '2007439957-pX9R52eq'; // あなたのLIFF IDに変更
+    const liffId = '2007439957-pX9R52eq'; // あなたのLIFF ID
     const apiUrl = 'https://script.google.com/macros/s/AKfycbxnKaxkaY8x2Yahgzmc44x9RyBe3s7NfT4ESf9JldsgnbctbYal-BXWW0u8ZI4UUFDi/exec';
 
     let calendar;
@@ -99,34 +99,36 @@
           alert(`👤 名前: ${name}\n📋 内容: ${note}\n🕒 日時: ${info.event.start.toLocaleString()}`);
         },
         dateClick: async info => {
-          // 名前入力
           const name = prompt("👤 名前を入力してください:");
           if (!name) return;
 
-          // 時間入力（フォーマット例付き）
-          let time = prompt("⏰ 時間を入力 (例: 13:00):", "12:00");
-          if (!time) return;
-          // HH:MM 形式チェック (簡易)
-          const m = time.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
-          if (!m) {
-            alert("時間は 00:00〜23:59 の形式で入力してください");
+          // 時間選択をドロップダウン風に
+          const timeOptions = Array.from({ length: 24 }, (_, h) =>
+            [`${String(h).padStart(2, '0')}:00`, `${String(h).padStart(2, '0')}:30`]
+          ).flat();
+
+          let timePrompt = "⏰ 時間を選んでください:\n";
+          timeOptions.forEach((t, i) => {
+            timePrompt += `${i + 1}. ${t}\n`;
+          });
+
+          const timeIndex = prompt(timePrompt);
+          if (!timeIndex || isNaN(timeIndex) || timeIndex < 1 || timeIndex > timeOptions.length) {
+            alert("正しい番号を入力してください");
             return;
           }
+          const time = timeOptions[timeIndex - 1];
 
-          // 内容入力
           const note = prompt("📋 予定の内容を入力してください:");
           if (!note) return;
 
-          // 日付と時間を組み合わせ
           const datetime = new Date(`${info.dateStr}T${time}`);
-
-          // 見やすく整形
           const formatted = datetime.toLocaleString('ja-JP', {
             dateStyle: 'medium',
             timeStyle: 'short'
           });
 
-          const message = 
+          const message =
             `📅 カレンダーから予定追加\n\n` +
             `👤 名前: ${name}\n` +
             `🕒 日時: ${formatted}\n` +
@@ -136,10 +138,13 @@
             await liff.sendMessages([{ type: 'text', text: message }]);
             alert("メッセージを送信しました！");
 
-            // 必要ならここでGASに保存させるPOSTリクエストを追加
-            // await fetch(apiUrl, { method:'POST', body: JSON.stringify({ name, note, start: datetime.toISOString() }) });
+            // 任意：GASにも送信する場合はこちらを有効に
+            // await fetch(apiUrl, {
+            //   method: 'POST',
+            //   headers: { 'Content-Type': 'application/json' },
+            //   body: JSON.stringify({ name, note, start: datetime.toISOString() })
+            // });
 
-            // カレンダー更新
             const newEvents = await fetchEvents();
             renderCalendar(newEvents);
           } catch (err) {
