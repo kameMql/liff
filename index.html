@@ -50,7 +50,7 @@
       min-height: 80px;
     }
 
-    button {
+    button, .calendar-link {
       width: 100%;
       padding: 12px;
       background-color: #4CAF50;
@@ -59,9 +59,13 @@
       border-radius: 5px;
       font-size: 18px;
       cursor: pointer;
+      margin-top: 10px;
+      display: block;
+      text-align: center;
+      text-decoration: none;
     }
 
-    button:hover {
+    button:hover, .calendar-link:hover {
       background-color: #45a049;
     }
   </style>
@@ -81,6 +85,9 @@
     <button type="submit">LINEに送信</button>
   </form>
 
+  <!-- 📅 カレンダーリンク追加 -->
+  <a href="calendar.html" class="calendar-link">📅 カレンダーを見る</a>
+
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       liff.init({ liffId: '2007439957-pX9R52eq' })
@@ -99,12 +106,10 @@
 
         const message = `📅 予定入力\n\n👤 名前: ${name}\n🕒 日時: ${datetime}\n📋 内容: ${note}`;
 
-        liff.sendMessages([
-          {
-            type: 'text',
-            text: message
-          }
-        ])
+        liff.sendMessages([{
+          type: 'text',
+          text: message
+        }])
         .then(() => {
           alert("メッセージを送信しました！");
           liff.closeWindow();
