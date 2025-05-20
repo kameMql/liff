@@ -74,6 +74,32 @@
     .modal-content button:hover {
       background-color: #45a049;
     }
+
+    /* スマホ用調整 */
+    @media (max-width: 600px) {
+      /* 日付番号のサイズと余白 */
+      .fc .fc-daygrid-day-top {
+        font-size: 1.2rem !important;
+        padding: 0.4rem !important;
+      }
+      /* イベントのフォントサイズとパディング */
+      .fc .fc-daygrid-event {
+        font-size: 0.85rem !important;
+        padding: 0.15rem 0.25rem !important;
+      }
+      /* 日付セルの最小高さ */
+      .fc .fc-daygrid-day {
+        min-height: 80px !important;
+      }
+      /* ヘッダーのタイトルやボタンサイズも調整 */
+      .fc .fc-toolbar-title {
+        font-size: 1rem !important;
+      }
+      .fc-button {
+        font-size: 0.8rem !important;
+        padding: 0.3rem 0.5rem !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -152,6 +178,7 @@
         },
         nowIndicator: true,
         events,
+        height: 'auto',  // ← ここを追加
         eventClick: info => {
           const { name, note } = info.event.extendedProps;
           alert(`👤 名前: ${name || '不明'}\n📋 内容: ${note || '（内容なし）'}\n🕒 日時: ${info.event.start.toLocaleString()}`);
