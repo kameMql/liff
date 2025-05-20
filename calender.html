@@ -1,55 +1,96 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>予定カレンダー</title>
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #calendar { max-width: 900px; margin: 0 auto; }
+    .modal {
+      display: none; position: fixed; z-index: 1; left: 0; top: 0;
+      width: 100%; height: 100%; overflow: auto;
+      background-color: rgba(0,0,0,0.4);
     }
-    #calendar {
-      max-width: 900px;
-      margin: 0 auto;
+    .modal-content {
+      background-color: #fff; margin: 15% auto; padding: 20px;
+      border: 1px solid #888; width: 80%; max-width: 500px;
+      border-radius: 8px;
+    }
+    .close {
+      float: right; font-size: 28px; font-weight: bold; cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>予定カレンダー</h1>
-  <div id="calendar"></div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', async function () {
-      const calendarEl = document.getElementById('calendar');
+<h2 style="text-align:center;">予定カレンダー</h2>
+<div id="calendar"></div>
 
-      // 🔽 GASのWeb App URLをここに貼り付けてください（"exec"で終わるURL）
-      const gasUrl = 'https://script.google.com/macros/s/AKfycbyk-m81DtrDhZlOLOa2dEghklyVlq-3WPm7Y5liqmHZ2-_pFZ7dSAP9pbTFUfhHxd84/exec';
+<!-- モーダル -->
+<div id="eventModal" class="modal">
+  <div class="modal-content">
+    <span class="close" id="modalClose">&times;</span>
+    <h3 id="modalTitle"></h3>
+    <p><strong>日時:</strong> <span id="modalDate"></span></p>
+    <p><strong>名前:</strong> <span id="modalName"></span></p>
+    <p><strong>内容:</strong> <span id="modalNote"></span></p>
+  </div>
+</div>
 
-      let events = [];
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById('calendar');
 
-      try {
-        const response = await fetch(gasUrl);
-        events = await response.json(); // [{ title, start }, ...]
-      } catch (error) {
-        console.error('イベント取得エラー:', error);
-        alert('予定の読み込みに失敗しました');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      locale: 'ja',
+      events: [],
+      eventClick: function (info) {
+        const event = info.event.extendedProps;
+
+        document.getElementById('modalTitle').textContent = info.event.title;
+        document.getElementById('modalDate').textContent = info.event.start.toLocaleString();
+        document.getElementById('modalName').textContent = event.name || '（不明）';
+        document.getElementById('modalNote').textContent = event.note || '';
+
+        document.getElementById('eventModal').style.display = 'block';
       }
+    });
 
-      const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        locale: 'ja',
-        headerToolbar: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,timeGridWeek,listWeek'
-        },
-        events: events
+    calendar.render();
+
+    // GASのWeb APIから予定データを取得
+    fetch('https://script.google.com/macros/s/AKfycbyk-m81DtrDhZlOLOa2dEghklyVlq-3WPm7Y5liqmHZ2-_pFZ7dSAP9pbTFUfhHxd84/exec')
+      .then(res => res.json())
+      .then(data => {
+        const events = data.map(row => ({
+          title: row.note,
+          start: row.datetime,
+          extendedProps: {
+            name: row.name,
+            note: row.note
+          }
+        }));
+        calendar.addEventSource(events);
+      })
+      .catch(err => {
+        alert("予定の取得に失敗しました。");
+        console.error(err);
       });
 
-      calendar.render();
-    });
-  </script>
+    // モーダル閉じる
+    document.getElementById('modalClose').onclick = () => {
+      document.getElementById('eventModal').style.display = 'none';
+    };
+    window.onclick = function (event) {
+      if (event.target === document.getElementById('eventModal')) {
+        document.getElementById('eventModal').style.display = 'none';
+      }
+    };
+  });
+</script>
 </body>
 </html>
