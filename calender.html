@@ -18,7 +18,6 @@
       padding: 0;
       font-family: sans-serif;
       background-color: #f0f0f0;
-      height: 100%;
     }
 
     h2 {
@@ -36,6 +35,7 @@
       padding: 1rem;
       border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      box-sizing: border-box;
     }
 
     @media (max-width: 600px) {
@@ -49,9 +49,21 @@
         font-size: 1rem;
       }
 
-      .fc-toolbar-chunk button {
-        font-size: 0.8rem;
-        padding: 0.3rem 0.5rem;
+      .fc-button {
+        font-size: 0.8rem !important;
+        padding: 0.3rem 0.5rem !important;
+      }
+
+      .fc .fc-daygrid-event {
+        font-size: 0.75rem;
+      }
+
+      .fc .fc-list-event-title {
+        font-size: 0.85rem;
+      }
+
+      .fc .fc-list-event-time {
+        font-size: 0.75rem;
       }
     }
   </style>
@@ -68,14 +80,19 @@
         const response = await fetch('https://script.google.com/macros/s/AKfycbxSzpmDB_9lUjTHKOQY-7r4FVQ6ceHcnCAR5CNx_nVKLiUYA5OHQDny6VX8BegJonxn/exec');
         const events = await response.json();
 
+        const isMobile = window.innerWidth < 600;
+
         const calendar = new FullCalendar.Calendar(calendarEl, {
-          initialView: window.innerWidth < 600 ? 'listWeek' : 'dayGridMonth',
+          initialView: isMobile ? 'listDay' : 'dayGridMonth',
           locale: 'ja',
           headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,listWeek'
+            right: 'dayGridMonth,listDay'  // 週表示を削除
           },
+          height: 'auto',
+          expandRows: true,
+          nowIndicator: true,
           events: events.map(e => ({
             title: e.title,
             start: e.start,
