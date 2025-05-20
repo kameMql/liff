@@ -11,14 +11,13 @@
   <style>
     body {
       font-family: 'Helvetica Neue', sans-serif;
+      background-color: #f0f0f0;
       margin: 0;
       padding: 1rem;
-      background-color: #f0f0f0;
     }
     h2 {
       text-align: center;
       color: #4CAF50;
-      margin: 1rem 0;
     }
     #calendar {
       max-width: 900px;
@@ -28,18 +27,79 @@
       border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
-    @media (max-width: 600px) {
-      .fc .fc-toolbar-title { font-size: 1rem; }
-      .fc-button { font-size: 0.8rem !important; padding: 0.3rem 0.5rem !important; }
-      .fc .fc-daygrid-event { font-size: 0.75rem; }
-      .fc .fc-list-event-title { font-size: 0.85rem; }
-      .fc .fc-list-event-time  { font-size: 0.75rem; }
+
+    /* モーダルスタイル */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 10;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+    .modal-content {
+      background-color: #fff;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    .modal-content label {
+      display: block;
+      margin-top: 10px;
+    }
+    .modal-content input, .modal-content select, .modal-content textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    .modal-content button {
+      margin-top: 15px;
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .modal-content button:hover {
+      background-color: #45a049;
     }
   </style>
 </head>
 <body>
   <h2>予定カレンダー</h2>
   <div id="calendar"></div>
+
+  <!-- モーダルフォーム -->
+  <div id="inputModal" class="modal">
+    <div class="modal-content">
+      <h3>予定を入力</h3>
+      <form id="scheduleForm">
+        <label>👤 名前</label>
+        <input type="text" id="nameInput" required>
+
+        <label>⏰ 時間</label>
+        <select id="timeInput">
+          <!-- JSで追加 -->
+        </select>
+
+        <label>📋 内容</label>
+        <textarea id="noteInput" rows="3" required></textarea>
+
+        <button type="submit">✅ 送信する</button>
+      </form>
+    </div>
+  </div>
 
   <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -50,8 +110,8 @@
   <script>
     const liffId = '2007439957-pX9R52eq'; // あなたのLIFF ID
     const apiUrl = 'https://script.google.com/macros/s/AKfycbxnKaxkaY8x2Yahgzmc44x9RyBe3s7NfT4ESf9JldsgnbctbYal-BXWW0u8ZI4UUFDi/exec';
-
     let calendar;
+    let selectedDate = null;
 
     async function initLiff() {
       try {
@@ -90,74 +150,81 @@
           center: 'title',
           right: 'dayGridMonth,listDay'
         },
-        height: 'auto',
         nowIndicator: true,
         events,
         eventClick: info => {
-          const name = info.event.extendedProps.name || '不明';
-          const note = info.event.extendedProps.note || '（内容なし）';
-          alert(`👤 名前: ${name}\n📋 内容: ${note}\n🕒 日時: ${info.event.start.toLocaleString()}`);
+          const { name, note } = info.event.extendedProps;
+          alert(`👤 名前: ${name || '不明'}\n📋 内容: ${note || '（内容なし）'}\n🕒 日時: ${info.event.start.toLocaleString()}`);
         },
-        dateClick: async info => {
-          const name = prompt("👤 名前を入力してください:");
-          if (!name) return;
-
-          // 時間選択をドロップダウン風に
-          const timeOptions = Array.from({ length: 24 }, (_, h) =>
-            [`${String(h).padStart(2, '0')}:00`, `${String(h).padStart(2, '0')}:30`]
-          ).flat();
-
-          let timePrompt = "⏰ 時間を選んでください:\n";
-          timeOptions.forEach((t, i) => {
-            timePrompt += `${i + 1}. ${t}\n`;
-          });
-
-          const timeIndex = prompt(timePrompt);
-          if (!timeIndex || isNaN(timeIndex) || timeIndex < 1 || timeIndex > timeOptions.length) {
-            alert("正しい番号を入力してください");
-            return;
-          }
-          const time = timeOptions[timeIndex - 1];
-
-          const note = prompt("📋 予定の内容を入力してください:");
-          if (!note) return;
-
-          const datetime = new Date(`${info.dateStr}T${time}`);
-          const formatted = datetime.toLocaleString('ja-JP', {
-            dateStyle: 'medium',
-            timeStyle: 'short'
-          });
-
-          const message =
-            `📅 カレンダーから予定追加\n\n` +
-            `👤 名前: ${name}\n` +
-            `🕒 日時: ${formatted}\n` +
-            `📋 内容: ${note}`;
-
-          try {
-            await liff.sendMessages([{ type: 'text', text: message }]);
-            alert("メッセージを送信しました！");
-
-            // 任意：GASにも送信する場合はこちらを有効に
-            // await fetch(apiUrl, {
-            //   method: 'POST',
-            //   headers: { 'Content-Type': 'application/json' },
-            //   body: JSON.stringify({ name, note, start: datetime.toISOString() })
-            // });
-
-            const newEvents = await fetchEvents();
-            renderCalendar(newEvents);
-          } catch (err) {
-            alert("送信に失敗しました\n" + err);
-          }
+        dateClick: info => {
+          selectedDate = info.dateStr;
+          document.getElementById('inputModal').style.display = 'block';
         }
       });
 
       calendar.render();
     }
 
+    // モーダル時間選択肢を生成
+    function populateTimeOptions() {
+      const select = document.getElementById('timeInput');
+      for (let h = 0; h < 24; h++) {
+        ['00', '30'].forEach(min => {
+          const option = document.createElement('option');
+          option.value = `${String(h).padStart(2, '0')}:${min}`;
+          option.textContent = option.value;
+          select.appendChild(option);
+        });
+      }
+    }
+
+    // フォーム送信処理
+    document.getElementById('scheduleForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = document.getElementById('nameInput').value;
+      const time = document.getElementById('timeInput').value;
+      const note = document.getElementById('noteInput').value;
+
+      const datetime = new Date(`${selectedDate}T${time}`);
+      const formatted = datetime.toLocaleString('ja-JP', { dateStyle: 'medium', timeStyle: 'short' });
+
+      const message =
+        `📅 カレンダーから予定追加\n\n` +
+        `👤 名前: ${name}\n` +
+        `🕒 日時: ${formatted}\n` +
+        `📋 内容: ${note}`;
+
+      try {
+        await liff.sendMessages([{ type: 'text', text: message }]);
+        alert("メッセージを送信しました！");
+        document.getElementById('inputModal').style.display = 'none';
+        e.target.reset();
+
+        // GAS連携したい場合は以下を有効に
+        // await fetch(apiUrl, {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({ name, note, start: datetime.toISOString() })
+        // });
+
+        const updated = await fetchEvents();
+        renderCalendar(updated);
+      } catch (err) {
+        alert("送信に失敗しました\n" + err);
+      }
+    });
+
+    // モーダル外クリックで閉じる
+    window.onclick = e => {
+      if (e.target === document.getElementById('inputModal')) {
+        document.getElementById('inputModal').style.display = 'none';
+      }
+    };
+
+    // 初期化
     document.addEventListener('DOMContentLoaded', async () => {
       await initLiff();
+      populateTimeOptions();
       const events = await fetchEvents();
       renderCalendar(events);
     });
