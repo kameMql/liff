@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>予定カレンダー</title>
 
-  <!-- FullCalendar CSS -->
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
 
   <style>
@@ -28,15 +27,12 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    /* モーダルスタイル */
     .modal {
       display: none;
       position: fixed;
       z-index: 10;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
       overflow: auto;
       background-color: rgba(0, 0, 0, 0.4);
     }
@@ -74,24 +70,23 @@
     .modal-content button:hover {
       background-color: #45a049;
     }
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+    }
 
-    /* スマホ用調整 */
     @media (max-width: 600px) {
-      /* 日付番号のサイズと余白 */
       .fc .fc-daygrid-day-top {
         font-size: 1.2rem !important;
         padding: 0.4rem !important;
       }
-      /* イベントのフォントサイズとパディング */
       .fc .fc-daygrid-event {
         font-size: 0.85rem !important;
         padding: 0.15rem 0.25rem !important;
       }
-      /* 日付セルの最小高さ */
       .fc .fc-daygrid-day {
         min-height: 80px !important;
       }
-      /* ヘッダーのタイトルやボタンサイズも調整 */
       .fc .fc-toolbar-title {
         font-size: 1rem !important;
       }
@@ -106,52 +101,43 @@
   <h2>予定カレンダー</h2>
   <div id="calendar"></div>
 
-  <!-- モーダルフォーム -->
   <div id="inputModal" class="modal">
     <div class="modal-content">
       <h3>予定を入力</h3>
       <form id="scheduleForm">
+        <input type="hidden" id="eventId">
         <label>👤 名前</label>
         <input type="text" id="nameInput" required>
 
         <label>⏰ 時間</label>
-        <select id="timeInput">
-          <!-- JSで追加 -->
-        </select>
+        <select id="timeInput"></select>
 
         <label>📋 内容</label>
         <textarea id="noteInput" rows="3" required></textarea>
 
-        <button type="submit">✅ 送信する</button>
+        <div class="modal-footer">
+          <button type="submit">✅ 保存</button>
+          <button type="button" id="deleteBtn" style="background-color: #f44336;">🗑️ 削除</button>
+        </div>
       </form>
     </div>
   </div>
 
-  <!-- LIFF SDK -->
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <!-- FullCalendar JS -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js"></script>
 
   <script>
-    const liffId = '2007439957-pX9R52eq'; // あなたのLIFF ID
-    const apiUrl = 'https://script.google.com/macros/s/AKfycbxnKaxkaY8x2Yahgzmc44x9RyBe3s7NfT4ESf9JldsgnbctbYal-BXWW0u8ZI4UUFDi/exec';
+    const apiUrl = 'https://script.google.com/macros/s/AKfycbxc08xwsNeAFIkGbRNAXJp6nupiMShBaMao88QdLOWR_aJ7eMHQADcicVPwjN1hldnB/exec';
     let calendar;
     let selectedDate = null;
-
-    async function initLiff() {
-      try {
-        await liff.init({ liffId });
-      } catch (err) {
-        alert('LIFF初期化に失敗: ' + err);
-      }
-    }
+    let editingId = null;
 
     async function fetchEvents() {
       try {
         const res = await fetch(apiUrl);
         const data = await res.json();
         return data.map(e => ({
+          id: e.id,
           title: e.title,
           start: e.start,
           extendedProps: { name: e.name, note: e.note }
@@ -178,13 +164,25 @@
         },
         nowIndicator: true,
         events,
-        height: 'auto',  // ← ここを追加
+        height: 'auto',
         eventClick: info => {
           const { name, note } = info.event.extendedProps;
-          alert(`👤 名前: ${name || '不明'}\n📋 内容: ${note || '（内容なし）'}\n🕒 日時: ${info.event.start.toLocaleString()}`);
+          const date = new Date(info.event.start);
+          const hours = date.getHours().toString().padStart(2, '0');
+          const minutes = date.getMinutes().toString().padStart(2, '0');
+          document.getElementById('eventId').value = info.event.id;
+          document.getElementById('nameInput').value = name;
+          document.getElementById('timeInput').value = `${hours}:${minutes}`;
+          document.getElementById('noteInput').value = note;
+          selectedDate = date.toISOString().split('T')[0];
+          editingId = info.event.id;
+          document.getElementById('inputModal').style.display = 'block';
         },
         dateClick: info => {
           selectedDate = info.dateStr;
+          editingId = null;
+          document.getElementById('scheduleForm').reset();
+          document.getElementById('eventId').value = '';
           document.getElementById('inputModal').style.display = 'block';
         }
       });
@@ -192,7 +190,6 @@
       calendar.render();
     }
 
-    // モーダル時間選択肢を生成
     function populateTimeOptions() {
       const select = document.getElementById('timeInput');
       for (let h = 0; h < 24; h++) {
@@ -205,52 +202,67 @@
       }
     }
 
-    // フォーム送信処理
     document.getElementById('scheduleForm').addEventListener('submit', async e => {
       e.preventDefault();
       const name = document.getElementById('nameInput').value;
       const time = document.getElementById('timeInput').value;
       const note = document.getElementById('noteInput').value;
+      const datetime = new Date(`${selectedDate}T${time}`).toISOString();
 
-      const datetime = new Date(`${selectedDate}T${time}`);
-      const formatted = datetime.toLocaleString('ja-JP', { dateStyle: 'medium', timeStyle: 'short' });
-
-      const message =
-        `📅 カレンダーから予定追加\n\n` +
-        `👤 名前: ${name}\n` +
-        `🕒 日時: ${formatted}\n` +
-        `📋 内容: ${note}`;
+      const payload = {
+        action: editingId ? 'edit' : 'add',
+        id: editingId,
+        name,
+        note,
+        start: datetime
+      };
 
       try {
-        await liff.sendMessages([{ type: 'text', text: message }]);
-        alert("メッセージを送信しました！");
+        await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        alert(editingId ? "予定を更新しました" : "予定を登録しました");
         document.getElementById('inputModal').style.display = 'none';
         e.target.reset();
-
-        // GAS連携したい場合は以下を有効に
-        // await fetch(apiUrl, {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ name, note, start: datetime.toISOString() })
-        // });
-
+        editingId = null;
         const updated = await fetchEvents();
         renderCalendar(updated);
       } catch (err) {
-        alert("送信に失敗しました\n" + err);
+        alert("送信失敗: " + err);
       }
     });
 
-    // モーダル外クリックで閉じる
+    document.getElementById('deleteBtn').addEventListener('click', async () => {
+      if (!editingId) return;
+      if (!confirm("この予定を削除しますか？")) return;
+
+      try {
+        await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete', id: editingId })
+        });
+
+        alert("削除しました");
+        document.getElementById('inputModal').style.display = 'none';
+        const updated = await fetchEvents();
+        renderCalendar(updated);
+      } catch (err) {
+        alert("削除に失敗しました\n" + err);
+      }
+    });
+
     window.onclick = e => {
       if (e.target === document.getElementById('inputModal')) {
         document.getElementById('inputModal').style.display = 'none';
+        editingId = null;
       }
     };
 
-    // 初期化
     document.addEventListener('DOMContentLoaded', async () => {
-      await initLiff();
       populateTimeOptions();
       const events = await fetchEvents();
       renderCalendar(events);
